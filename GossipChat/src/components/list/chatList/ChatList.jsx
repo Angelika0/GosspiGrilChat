@@ -1,6 +1,6 @@
 import{useState, useEffect } from 'react';
 import './chatList.css';
-import { onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { onSnapshot, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../lib/firebase'; 
 import AddUser from '../../addUser/AddUser';
 import { useUserStore } from '../../../lib/userStore';
@@ -35,7 +35,27 @@ const ChatList = () => {
     }, [currentUser.id]);
 
     const handleSelect = async (chat) => {
-        changeChat(chat.chatId, chat.user);
+        
+       const userChats = chats.map(item=>{
+        const {user, ...rest } = item;
+        return rest;
+       })   
+
+       const chatIndex = userChats.findIndex(
+        (item)=> item.chatId === chat.chatId
+    );
+        userChats[chatIndex].isSeen = true;
+
+        const userChatRef = doc(db, "userchat", currentUser.id);
+        try{
+            await updateDoc(userChatRef, {
+                chats: userChats,
+            });
+
+            changeChat(chat.chatId, chat.user);
+        }catch(err){
+            console.log(err);
+        }
     }
 
     return (
@@ -53,7 +73,14 @@ const ChatList = () => {
                 onClick={() => setAddMode((prev)=>!prev)} />
             </div>
             {chats.map( (chat) => (
-                <div className='item' key={chat.chatId} onClick={() => handleSelect(chat)}>
+                <div 
+                className='item'
+                 key={chat.chatId} 
+                 onClick={() => handleSelect(chat)}
+                 style ={{
+                    backgroundColor: chat?.isSeen ? "transparent" : "rgba(219, 44, 114, 0.26)"
+                 }}
+                 >
                     <img src ={ chat.user.avatar || './avatar.png'} alt='' className='avatar'/>
                     <div className='texts'>
                         <span>{chat.user.username}</span>
